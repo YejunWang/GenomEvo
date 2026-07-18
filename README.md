@@ -1,4 +1,4 @@
-# 🧬 GenomEvo v2.0
+# 🧬 GenomEvo
 
 **An Integrated System for Bacterial Comparative and Evolutionary Genomic Analysis**
 
