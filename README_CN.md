@@ -43,10 +43,10 @@
               │    └─→ [7] BactFragAnn (1DGR模式) ──→ 交互式马赛克图
               │
               └─ [6] BactEvolTraj ──→ 结构变异分析
-                   └─→ [7] BactFragAnn (EvolTraj模式) ──→ 交互式环形图
+                   └─→ [7] BactFragAnn (EvolTraj模式) ──→ 交互式环状图
 ```
 
-**要点：** 从BactCG开始获取系统发育树。BactAG与BactPG可并行运行。BactPGA整合两者输出。下游模块消费BactAG/BactPGA结果。
+**要点：** 从BactCG开始获取系统发育树。BactAG与BactPG可并行运行。BactPGA整合两者输出。下游模块使用BactAG/BactPGA结果。
 
 ---
 
