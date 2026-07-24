@@ -1,0 +1,53 @@
+{
+    "name": "Example GenomEvo Full Pipeline",
+    "description": "Complete analysis pipeline from ancestral genome reconstruction to visualization",
+    "steps": [
+        {
+            "module": "bactag",
+            "params": {
+                "tree_dir": "./input/tree",
+                "gene_dir": "./input/genomes",
+                "threads": 20,
+                "output_dir": "01_BactAG_Results"
+            }
+        },
+        {
+            "module": "bactcg",
+            "params": {
+                "input_dir": "./input/proteins",
+                "output_dir": "02_BactCG_Results",
+                "ref_strain": "MG1655",
+                "cd_cutoff": 0.7
+            }
+        },
+        {
+            "module": "bactpg",
+            "params": {
+                "seq_dir": "./input/proteins",
+                "output_dir": "03_BactPG_Results",
+                "similarity": 0.7,
+                "threads": 30
+            }
+        },
+        {
+            "module": "bactpga",
+            "params": {
+                "mode": "pipeline",
+                "gbk_file": "./01_BactAG_Results/output/AG_0001.fasta.gbk",
+                "pg_file": "./03_BactPG_Results/PG.txt",
+                "seq_dir": "./input/sequences",
+                "output_dir": "04_BactPGA_Results"
+            }
+        },
+        {
+            "module": "bact1dgr",
+            "params": {
+                "base_strain": "AG_0001",
+                "bactid_file": "./01_BactAG_Results/bactID.txt",
+                "fasta_dir": "./01_BactAG_Results/output",
+                "workers": 8,
+                "output_dir": "05_OneDGR_Results"
+            }
+        }
+    ]
+}
