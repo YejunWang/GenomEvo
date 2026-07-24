@@ -1,0 +1,439 @@
+# 🧬 GenomEvo 
+
+**An Integrated System for Bacterial Comparative and Evolutionary Genomic Analysis**
+
+[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
+[![Go](https://img.shields.io/badge/go-1.18+-00ADD8.svg)](https://golang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+**English** | [中文](README_CN.md)
+
+---
+
+## 📋 Overview
+
+**GenomEvo** is an AOG (Ancestral Orthologous Genome)-centered pipeline that automatically performs bacterial comparative and evolutionary genomic analysis. It integrates seven core modules into a unified, easy-to-use platform with both **command-line interface (CLI)** and **web-based graphical user interface (GUI)**.
+
+### Core Modules
+
+| Module | Function | Input | Output |
+|--------|----------|-------|--------|
+| **BactCG** | Core genome identification + phylogenetic tree inference | Protein FASTA files directory | Core gene clusters + MEG alignments + SNP data |
+| **BactAG** | Ancestral genome reconstruction | Phylogenetic tree (Newick) + Genome FASTA files | Ancestral genomes (AOGs) + `bactID.txt` |
+| **BactPG** | Pan-genome analysis | Sequence FASTA files directory | `PG.txt` pan-genome matrix |
+| **BactPGA** | Pan-genome annotation | GenBank files + PG matrix + Mutual best hits | Annotated gene tables with PG UIDs |
+| **Bact1DGR** | 1D genomic representation | AOG + Patch strains + `bactID.txt` | `*.1dgr.txt` fragment maps |
+| **BactEvolTraj** | Evolutionary trajectory analysis | FASTA + GenBank + Tree edges (3-way Mauve) | SV events tables + Coverage matrices + Plots |
+| **BactFragAnn** | Fragment annotation & visualization | 1DGR output + GenBank files | Interactive HTML charts (Plotly) |
+
+### Pipeline Workflow
+
+```
+Protein FASTA + Genome FASTA + GenBank Annotations
+    │
+    └─ [1] BactCG ──→ Core Genome + Phylogenetic Tree
+         │
+         ├─ [2] BactAG ──→ Ancestral Genomes (AOG) + bactID.txt
+         │    (runs in parallel with BactPG)
+         ├─ [3] BactPG ──→ Pan-Genome Matrix (PG.txt)
+         │
+         └─ [4] BactPGA ──→ Annotated Gene Tables (integrates AG + PG)
+              │
+              ├─ [5] Bact1DGR ──→ 1D Genome Representations
+              │    └─→ [7] BactFragAnn (1DGR mode) ──→ Interactive Mosaic Charts
+              │
+              └─ [6] BactEvolTraj ──→ Structural Variant Analysis
+                   └─→ [7] BactFragAnn (EvolTraj mode) ──→ Interactive Circular Plots
+```
+
+**Key point:** Start with BactCG to obtain the phylogenetic tree. BactAG and BactPG can run in parallel. BactPGA integrates outputs from both. Downstream modules consume BactAG/BactPGA results.
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Python** ≥ 3.8
+- **Go** ≥ 1.18 (for compiling binaries; pre-compiled binaries included)
+- **External tools**: `progressiveMauve`, `blastn`, `blastp`, `cd-hit`
+
+Install external tools on Ubuntu/Debian:
+```bash
+# Mauve aligner
+sudo apt install mauve-aligner
+
+# NCBI BLAST+
+sudo apt install ncbi-blast+
+
+# CD-HIT
+sudo apt install cd-hit
+```
+
+### Installation (with Conda/Mamba)
+
+```bash
+# Create and activate environment (conda can be used instead of mamba)
+conda create -n genomevo python=3.10 -y
+conda activate genomevo
+
+# Install dependencies
+pip install biopython pandas numpy matplotlib plotly flask
+
+# Install GenomEvo
+cd /path/to/Genomevo
+pip install -e .
+```
+
+---
+
+## 💻 Command-Line Usage
+
+### Check System Dependencies
+
+```bash
+genomevo check
+```
+
+### Individual Module Examples
+
+#### 1. BactAG – Ancestral Genome Reconstruction
+
+```bash
+genomevo bactag \
+    --tree ./input/tree_dir \
+    --gene ./input/genome_dir \
+    --threads 20 \
+    --output BactAG_Results
+```
+
+**Input**: A directory containing a single Newick-format phylogenetic tree file, plus a directory of genome FASTA files (`.fasta`).
+
+**Output**: `BactAG_Results/` containing reconstructed ancestral genomes, `bactID.txt` (strain lineage map), and processing logs.
+
+#### 2. BactCG – Core Genome Analysis
+
+```bash
+genomevo bactcg \
+    --input ./input/proteins \
+    --output BactCG_Results \
+    --ref MG1655 \
+    --cd-c 0.7 \
+    --cg1 0.8
+```
+
+**Input**: Directory of protein FASTA files (one per strain).
+
+**Output**: `BactCG_Results/` with core gene clusters, MEG-format alignments, and SNP analysis results.
+
+#### 3. BactPG – Pan-Genome Analysis
+
+```bash
+genomevo bactpg \
+    --seq ./input/proteins \
+    --similarity 0.7 \
+    --threads 30 \
+    --output BactPG_Results
+```
+
+**Input**: Directory of protein FASTA files.
+
+**Output**: `BactPG_Results/` with `PG.txt` pan-genome matrix and clustering data.
+
+#### 4. BactPGA – Pan-Genome Annotation
+
+```bash
+# Full pipeline mode (recommended)
+genomevo bactpga \
+    --mode pipeline \
+    --gbk ./input/genome.gbk \
+    --pg ./BactPG_Results/PG.txt \
+    --seq ./input/sequences
+
+# Parse mode only
+genomevo bactpga --mode parse --gbk ./input/genome.gbk --output-file genes.tab.txt
+
+# Annotate mode
+genomevo bactpga \
+    --mode annotate \
+    --gbk ./input/genome.gbk \
+    --pg ./BactPG_Results/PG.txt \
+    --strain MG1655 \
+    --mutbest-dir ./BactCG_Results/mutbest
+```
+
+**Input**: GenBank file, pan-genome matrix, and mutual best hit data.
+
+**Output**: Annotated gene tables with pan-genome UID mappings.
+
+#### 5. Bact1DGR – 1D Genomic Representation
+
+```bash
+genomevo bact1dgr \
+    --base AncestralStrain \
+    --bactid ./BactAG_Results/bactID.txt \
+    --fasta-dir ./BactAG_Results/genomes \
+    --workers 8
+```
+
+**Input**: Base strain name, `bactID.txt` from BactAG, and directory of FASTA genomes.
+
+**Output**: `OneDGR_Output/Final_Results/*.1DGR.txt` – 1D fragment representation maps.
+
+#### 6. BactEvolTraj – Evolutionary Trajectory Analysis
+
+```bash
+# Using JSON config (recommended)
+genomevo bactevoltraj --config evolt_config.json
+
+# Or inline
+genomevo bactevoltraj \
+    --root-node S.enterica_AOG \
+    --fasta-dir ./genomes \
+    --gbk-dir ./annotations \
+    --tree '[["root","mA"],["mA","mB"],["mB","mC"]]'
+```
+
+**Input**: Root node name, FASTA and GenBank directories, tree edge definitions.
+
+**Output**: `Final_Large_SV_Analysis/` with SV event tables, coverage matrices, and Matplotlib plots.
+
+#### 7. BactFragAnn – Fragment Annotation & Visualization
+
+```bash
+genomevo bactfragann \
+    --mode 1dgr \
+    --base-dir ./working_dir \
+    --output Mosaic_Charts
+```
+
+**Input**: Working directory with 1DGR text files and GenBank files.
+
+**Output**: `Mosaic_Charts/` containing interactive Plotly HTML dashboards.
+
+### Full Pipeline (Automated)
+
+Create a JSON configuration file (`pipeline.json`) defining all steps in the recommended order:
+
+```json
+{
+    "steps": [
+        {"module": "bactcg",  "params": {"input_dir": "./proteins", "output_dir": "./cg_out",  "ref_strain": "MG1655"}},
+        {"module": "bactag",  "params": {"tree_dir": "./tree", "gene_dir": "./genomes", "threads": 20, "output_dir": "./ag_out"}},
+        {"module": "bactpg",  "params": {"seq_dir": "./proteins", "output_dir": "./pg_out", "similarity": 0.7}},
+        {"module": "bactpga", "params": {"mode": "pipeline", "gbk_file": "./ag_out/AG_root.gbk", "pg_file": "./pg_out/PG.txt", "seq_dir": "./proteins"}},
+        {"module": "bact1dgr","params": {"base_strain": "AG_root", "bactid_file": "./bactID.txt", "fasta_dir": "./genomes"}}
+    ]
+}
+```
+
+Run the full pipeline:
+```bash
+genomevo pipeline --config pipeline.json
+```
+
+---
+
+## 🌐 Web UI Usage
+
+Launch the interactive web interface:
+
+```bash
+genomevo web --port 5000
+```
+
+Then open your browser at `http://localhost:5000`.
+
+The web UI provides:
+- **Module cards** with clear input/output descriptions
+- **Step-by-step forms** for each module
+- **Pipeline workflow visualization**
+- **Dependency checker**
+- **Job submission with real-time status tracking**
+
+---
+
+## 📦 Project Structure
+
+```
+Genomevo/
+├── README.md                          # This file (English)
+├── README_CN.md                       # Chinese README
+├── setup.py                           # Python package installer
+├── run_genomevo.py                    # Quick-start entry script
+├── genomevo/                          # Main package
+│   ├── __init__.py                    # Package metadata
+│   ├── cli.py                         # CLI entry point (all subcommands)
+│   ├── config.py                      # Global configuration & tool paths
+│   ├── bin/                           # Pre-compiled Go binaries (single-file)
+│   │   ├── BactAG                     # Ancestral genome binary
+│   │   ├── bactcg                     # Core genome binary (unified with subcmds)
+│   │   ├── BactPG                     # Pan-genome binary (unified single-file)
+│   │   ├── bactpga                    # PG annotation binary
+│   │   └── clustalw2                  # ClustalW2 aligner
+│   ├── modules/                       # Analysis module Python wrappers
+│   │   ├── __init__.py                # Module exports
+│   │   ├── bactag.py                  # BactAG wrapper (work-dir isolation)
+│   │   ├── bactcg.py                  # BactCG wrapper (4-step pipeline)
+│   │   ├── bactpg.py                  # BactPG wrapper (--yes non-interactive)
+│   │   ├── bactpga.py                 # BactPGA wrapper
+│   │   ├── bact1dgr.py                # Bact1DGR wrapper
+│   │   ├── bactevoltraj.py            # BactEvolTraj wrapper
+│   │   ├── bactfragann.py             # BactFragAnn wrapper (callable functions)
+│   │   ├── BactFragAnn_for_1DGR.py    # 1DGR mosaic chart generator
+│   │   ├── BactFragAnn_for_BactEvolTraj.py  # SV circular plot generator
+│   │   ├── bactag_src/                # BactAG Go source (multi-package)
+│   │   ├── bactcg_src/                # BactCG Go source (cobra CLI, unified)
+│   │   ├── bactpg_src/                # BactPG Go source (main.go only)
+│   │   ├── bactpga_src/               # BactPGA Go source
+│   │   ├── onedgr/                    # OneDGR Python package
+│   │   └── onedgr_src/                # OneDGR Go sources
+│   ├── web/                           # Web UI
+│   │   ├── app.py                     # Flask application (10-strain limit)
+│   │   ├── templates/                 # HTML templates
+│   │   │   ├── index.html             # Home page (strain limit notice)
+│   │   │   ├── document.html          # Full documentation
+│   │   │   └── module.html            # Module configuration page
+│   │   └── static/
+│   │       ├── style.css              # Stylesheet
+│   │       └── workflow.svg           # Pipeline workflow diagram
+│   └── data/
+│       └── pipeline_example.json      # Example pipeline config
+└── workflow.svg                       # Master workflow diagram
+```
+
+> **Note:** `GenomEvo_web/` is a separate standalone web deployment directory (outside the package) containing static HTML documentation pages for direct browser access.
+```
+
+---
+
+## 🔧 Dependencies
+
+### External Tools (must be in $PATH)
+
+| Tool | Required By | Installation |
+|------|-------------|-------------|
+| `progressiveMauve` | BactAG, Bact1DGR, BactEvolTraj | `sudo apt install mauve-aligner` |
+| `blastn` / `blastp` | BactCG, BactPG | `sudo apt install ncbi-blast+` |
+| `cd-hit` | BactCG, BactPG | `sudo apt install cd-hit` |
+| `clustalw2` | BactCG | Bundled in `genomevo/bin/` |
+
+### Python Packages (auto-installed with pip)
+
+`biopython`, `pandas`, `numpy`, `matplotlib`, `plotly`, `flask`
+
+---
+
+## 📖 Input/Output Specification
+
+### BactAG
+
+| Item | Format | Description |
+|------|--------|-------------|
+| **Input: Tree** | Newick text file | Single file in tree directory, e.g. `(A,B),(C,D);` |
+| **Input: Genomes** | FASTA files (`.fasta`) | One multi-FASTA file per strain |
+| **Output: AOGs** | FASTA + GenBank | Reconstructed ancestral genomes |
+| **Output: bactID.txt** | Tabular text | Lineage record: `Parent+Child Outside Sibling = AG_ID` |
+
+### BactCG
+
+| Item | Format | Description |
+|------|--------|-------------|
+| **Input: Proteins** | FASTA files (`.fasta`) | One file per strain, protein sequences |
+| **Output: Core genes** | FASTA + MEG | Aligned core gene sequences |
+| **Output: SNPs** | Text matrix | SNP positions across strains |
+
+### BactPG
+
+| Item | Format | Description |
+|------|--------|-------------|
+| **Input: Sequences** | FASTA files | Protein or nucleotide sequences |
+| **Output: PG.txt** | Tab-separated matrix | Gene presence/absence across strains |
+
+### BactPGA
+
+| Item | Format | Description |
+|------|--------|-------------|
+| **Input: GenBank** | `.gbk` | NCBI-format GenBank file |
+| **Input: PG matrix** | `PG.txt` | From BactPG |
+| **Output: Annotated table** | `.tab.txt` | Gene table with PG cluster UIDs |
+
+### Bact1DGR
+
+| Item | Format | Description |
+|------|--------|-------------|
+| **Input: Base strain** | FASTA `.fasta` | Ancestral genome sequence |
+| **Input: Patch strains** | FASTA `.fasta` | Descendant genomes |
+| **Input: bactID.txt** | Text | From BactAG |
+| **Output: 1DGR** | `*.1dgr.txt` | Tab-separated fragment coordinates |
+
+### BactEvolTraj
+
+| Item | Format | Description |
+|------|--------|-------------|
+| **Input: FASTA** | `.fasta` | Genome sequences for all nodes |
+| **Input: GenBank** | `.gbk` | Gene annotations for all nodes |
+| **Input: Tree edges** | Python list | `[("parent","child"), ...]` |
+| **Output: SV table** | CSV | Insertion/deletion events per branch |
+| **Output: Plots** | PNG/PDF | Matplotlib visualizations |
+
+### BactFragAnn
+
+| Item | Format | Description |
+|------|--------|-------------|
+| **Input: 1DGR files** | `.txt` | From Bact1DGR |
+| **Input: GenBank files** | `.gbk` | Gene annotations |
+| **Output: HTML** | `.html` | Interactive Plotly dashboards |
+
+---
+
+## 🧪 Testing
+
+After installation, verify the installation with:
+
+```bash
+# Check all dependencies
+genomevo check
+
+# Verify binary accessibility
+genomevo/bin/BactAG --help
+
+# Test web UI (starts on localhost)
+genomevo web --port 5000
+```
+
+---
+
+## 📚 Citation
+
+If you use GenomEvo in your research, please cite:
+
+> Wang Y, Chen P, Zheng M, et al. GenomEvo: an efficient system delineating and annotating the evolutionary trajectories of bacterial genomes automatically. *(In preparation)*
+
+---
+
+## 👥 Contributors
+
+- **Yejun Wang** (PI) – wangyj@szu.edu.cn
+- **Yueming Hu** – huym@fynu.edu.cn
+- Yiwei Wang, Peijun Chen, Min Zheng, Zhixuan Deng, Xiuzhe Zhao, Ming Yuan, Tianrui Peng, Xinman Guo
+
+Youth Innovation Team of Medical Bioinformatics, Shenzhen University Medical School
+
+---
+
+## 📄 License
+
+MIT License
+
+---
+
+## 🌍 Related Databases
+
+- **Previous Work (ESG Tools)**: [https://resources.szu-bioinf.org/ESG/tools](https://resources.szu-bioinf.org/ESG/tools)
+- **EEG Database (E. coli)**: [https://resources.szu-bioinf.org/EEG](https://resources.szu-bioinf.org/EEG) — *E. coli* evolutionary network
+- **ESEEG Database (Salmonella)**: [https://resources.szu-bioinf.org/ESEEG](https://resources.szu-bioinf.org/ESEEG) — *Salmonella enterica* subsp. *enterica* evolutionary network
+
+## 🔗 Links
+
+- **GitHub**: [https://github.com/YejunWang/GenomEvo](https://github.com/YejunWang/GenomEvo)
