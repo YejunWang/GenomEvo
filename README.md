@@ -278,7 +278,7 @@ Genomevo/
 │   │   ├── bactpg.py                  # BactPG wrapper (--yes non-interactive)
 │   │   ├── bactpga.py                 # BactPGA wrapper
 │   │   ├── bact1dgr.py                # Bact1DGR wrapper
-│   │   ├── bactevoltraj.py            # BactEvolTraj wrapper
+│   │   ├── bactevoltraj_wrapper       # BactEvolTraj wrapper
 │   │   ├── bactfragann.py             # BactFragAnn wrapper (callable functions)
 │   │   ├── BactFragAnn_for_1DGR.py    # 1DGR mosaic chart generator
 │   │   ├── BactFragAnn_for_BactEvolTraj.py  # SV circular plot generator
