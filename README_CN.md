@@ -133,7 +133,7 @@ genomevo bactcg \
 
 **步骤**：(1) QC过滤（可选）→ (2) CD-HIT聚类 → (3) BLAST直系同源分析 → (4) getfa提取 → (5) clustalw2多序列比对 → (6) SNP位点拼接
 
-#### 3. BactPG – 泛基因组分析（统一单文件二进制）
+#### 3. BactPG – 泛基因组分析
 
 ```bash
 genomevo bactpg \
@@ -287,7 +287,7 @@ Genomevo/
 │   │   ├── bactpg.py                  # BactPG包装器（--yes 非交互）
 │   │   ├── bactpga.py                 # BactPGA包装器
 │   │   ├── bact1dgr.py                # Bact1DGR包装器
-│   │   ├── bactevoltraj.py            # BactEvolTraj包装器
+│   │   ├── bactevoltraj_wrapper       # BactEvolTraj包装器
 │   │   ├── bactfragann.py             # BactFragAnn包装器（可调用函数）
 │   │   ├── BactFragAnn_for_1DGR.py    # 1DGR马赛克图生成器
 │   │   ├── BactFragAnn_for_BactEvolTraj.py  # SV环形图生成器
